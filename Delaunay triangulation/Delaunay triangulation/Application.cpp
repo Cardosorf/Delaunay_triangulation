@@ -128,6 +128,7 @@ void isVT(Edges e, vector<OrderedPair>& x, vector<Triangle> t) {
 				((e.getEnd().getAxis_x() == t[i].getV1().getAxis_x() && e.getEnd().getAxis_y() == t[i].getV1().getAxis_y()) ||
 				(e.getEnd().getAxis_x() == t[i].getV2().getAxis_x() && e.getEnd().getAxis_y() == t[i].getV2().getAxis_y()) ||
 					(e.getEnd().getAxis_x() == t[i].getV3().getAxis_x() && e.getEnd().getAxis_y() == t[i].getV3().getAxis_y()))) {
+				
 				for (int j = 0; j < x.size(); j++) {
 					if (x[j].getAxis_x() == t[i].getV1().getAxis_x() && x[j].getAxis_y() == t[i].getV1().getAxis_y()) {
 						x.erase(x.begin() + j);
@@ -142,10 +143,49 @@ void isVT(Edges e, vector<OrderedPair>& x, vector<Triangle> t) {
 						j = 0;
 					}
 				}
+				
+				//return true;
 			}
 		}
+		//return false;
 }
 
+bool IsEdgeTriangle(Edges e, vector<Triangle> t) {
+	for (int i = 0; i < t.size(); i++) {
+		if (((e.getStart().getAxis_x() == t[i].getV1().getAxis_x() && e.getStart().getAxis_y() == t[i].getV1().getAxis_y()) ||
+			(e.getStart().getAxis_x() == t[i].getV2().getAxis_x() && e.getStart().getAxis_y() == t[i].getV2().getAxis_y()) ||
+			(e.getStart().getAxis_x() == t[i].getV3().getAxis_x() && e.getStart().getAxis_y() == t[i].getV3().getAxis_y())) &&
+			((e.getEnd().getAxis_x() == t[i].getV1().getAxis_x() && e.getEnd().getAxis_y() == t[i].getV1().getAxis_y()) ||
+			(e.getEnd().getAxis_x() == t[i].getV2().getAxis_x() && e.getEnd().getAxis_y() == t[i].getV2().getAxis_y()) ||
+				(e.getEnd().getAxis_x() == t[i].getV3().getAxis_x() && e.getEnd().getAxis_y() == t[i].getV3().getAxis_y()))) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool interceptEdge(vector<Edges> convex_edges, Edges e) {
+	for (int i = 0; i < convex_edges.size(); i++) {
+		float ABx = e.getEnd().getAxis_x() - e.getStart().getAxis_x();
+		float ABy = e.getEnd().getAxis_y() - e.getStart().getAxis_y();
+		float ADx = convex_edges[i].getEnd().getAxis_x() - e.getStart().getAxis_x();
+		float ADy = convex_edges[i].getEnd().getAxis_y() - e.getStart().getAxis_y();
+		float ACx = convex_edges[i].getStart().getAxis_x() - e.getStart().getAxis_x();
+		float ACy = convex_edges[i].getStart().getAxis_y() - e.getStart().getAxis_y();
+		float CDx = convex_edges[i].getEnd().getAxis_x() - convex_edges[i].getStart().getAxis_x();
+		float CDy = convex_edges[i].getEnd().getAxis_y() - convex_edges[i].getStart().getAxis_y();
+		float CAx = e.getStart().getAxis_x() - convex_edges[i].getStart().getAxis_x();
+		float CAy = e.getStart().getAxis_y() - convex_edges[i].getStart().getAxis_y();
+		float CBx = e.getEnd().getAxis_x() - convex_edges[i].getStart().getAxis_x();
+		float CBy = e.getEnd().getAxis_y() - convex_edges[i].getStart().getAxis_y();
+
+		if ((ABx*ADy - ABy * ADx)*(ABx*ACy - ABy * ACx) < 0 && (CDx*CAy - CDy * CAx)*(CDx*CBy - CDy * CBx) < 0) {
+			cout << "intercepts" << endl;
+			return true;
+		}
+	}
+	return false;
+}
 
 //Checks if and edge belongs to a vector
 bool isEdgeConvex(vector<Edges> convex, Edges x) {
@@ -245,7 +285,6 @@ pair<float, OrderedPair> greater_angle_vertice(vector<OrderedPair> temp_vertices
 	return make_pair(angle_temp, temp);
 }
 
-int counting = 0;
 
 bool isEdgeBelongingConvex(Edges& edge,vector<Edges>& convex_edges) {
 	for (int i = 0; i < convex_edges.size(); i++) {
@@ -258,7 +297,6 @@ bool isEdgeBelongingConvex(Edges& edge,vector<Edges>& convex_edges) {
 			edge.setFree(0);
 			convex_edges[i].setFree(0);
 			cout << "SOU ARESTA LIVRE? DEPOIS " << edge.getFree() << endl;
-			counting++;
 			return true;
 		}
 	}
@@ -271,10 +309,6 @@ vector<OrderedPair> pointsArray;
 
 
 void mouse(int button, int state, int x, int y) {
-
-	float dx, dy;
-	int intercept = 0;
-
 
 	glColor3f(1.0, 1.0, 1.0);
 	//Left button click draws points on the screen and each point is stored inside a vector. 
@@ -294,43 +328,29 @@ void mouse(int button, int state, int x, int y) {
 		glutSwapBuffers();
 	}
 
-	//Finds the points wich belong to the convex hull.
 	if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN && pointsArray.size() > 2) {
 		vector<OrderedPair> convex_vertices;
 		convex_vertices = convex_Hull(pointsArray);
 		vector<Edges> convex_edges;
-		vector<Edges> oldConvex_edges; //edges from the original convex hull
 		queue<Edges> list_Edges;
-
 		vector<OrderedPair> temp_vertices = pointsArray;
-
 		vector<Triangle> triangles;
 
 		//Storing edges from the convex hull
 		for (int i = 0; i < (int)convex_vertices.size() - 1; i++) {
 			Edges temp(convex_vertices[i], convex_vertices[i + 1]);
 			convex_edges.push_back(temp);
-			oldConvex_edges.push_back(temp);
 		}
+
 		convex_edges[0].setFree(1);
 		list_Edges.push(convex_edges[0]); //Picking one edge from the convex hull to start the triangulation
 
-		//Removes vertices from the first edge.
-		remove_vertices_edge(temp_vertices, list_Edges);
-
 		pair<float, OrderedPair> angle_vertice;
-		//Finds the greater angle and its vertice
 		angle_vertice = greater_angle_vertice(temp_vertices, list_Edges);
 
-		cout << "elementos da lista " << list_Edges.size() << endl;
-		cout << "inicio aresta x " << list_Edges.front().getStart().getAxis_x() << endl;
-		cout << "inicio aresta y " << list_Edges.front().getStart().getAxis_y() << endl;
-		cout << "fim aresta x " << list_Edges.front().getEnd().getAxis_x() << endl;
-		cout << "fim aresta y " << list_Edges.front().getEnd().getAxis_y() << endl;
-
-		
 		while (!list_Edges.empty()) {
-			cout << "SOU LIVRO? antes " << list_Edges.front().getFree() << endl;
+
+			//verifica se os valores na lista e no vetor de edges batem..., caso contrario muda o valor
 			for (int i = 0; i < convex_edges.size(); i++) {
 				if (((list_Edges.front().getStart().getAxis_x() == convex_edges[i].getStart().getAxis_x() && list_Edges.front().getStart().getAxis_y() == convex_edges[i].getStart().getAxis_y()) ||
 					(list_Edges.front().getStart().getAxis_x() == convex_edges[i].getEnd().getAxis_x() && list_Edges.front().getStart().getAxis_y() == convex_edges[i].getEnd().getAxis_y())) &&
@@ -344,110 +364,61 @@ void mouse(int button, int state, int x, int y) {
 					}
 				}
 			}
-			if (counting == 2) {
-				list_Edges.front().setFree(0);
-			}
-			cout << "counting " << counting << endl;
-			counting = 0;
-			cout << "SOU LIVRO? depois " << list_Edges.front().getFree() << endl;
-
-			for (int i = 0; i < convex_edges.size() - 1; i++) {
-				float ABx = list_Edges.front().getEnd().getAxis_x() - list_Edges.front().getStart().getAxis_x();
-				float ABy = list_Edges.front().getEnd().getAxis_y() - list_Edges.front().getStart().getAxis_y();
-				float ADx = convex_edges[i].getEnd().getAxis_x() - list_Edges.front().getStart().getAxis_x();
-				float ADy = convex_edges[i].getEnd().getAxis_y() - list_Edges.front().getStart().getAxis_y();
-				float ACx = convex_edges[i].getStart().getAxis_x() - list_Edges.front().getStart().getAxis_x();
-				float ACy = convex_edges[i].getStart().getAxis_y() - list_Edges.front().getStart().getAxis_y();
-				float CDx = convex_edges[i].getEnd().getAxis_x() - convex_edges[i].getStart().getAxis_x();
-				float CDy = convex_edges[i].getEnd().getAxis_y() - convex_edges[i].getStart().getAxis_y();
-				float CAx = list_Edges.front().getStart().getAxis_x() - convex_edges[i].getStart().getAxis_x();
-				float CAy = list_Edges.front().getStart().getAxis_y() - convex_edges[i].getStart().getAxis_y();
-				float CBx = list_Edges.front().getEnd().getAxis_x() - convex_edges[i].getStart().getAxis_x();
-				float CBy = list_Edges.front().getEnd().getAxis_y() - convex_edges[i].getStart().getAxis_y();
-
-				if ((ABx*ADy - ABy * ADx)*(ABx*ACy - ABy * ACx) < 0 && (CDx*CAy - CDy * CAx)*(CDx*CBy - CDy * CBx) < 0) {
-					list_Edges.front().setFree(0);
-				}
-			}
-
 
 			if (list_Edges.front().getFree() == 0) {
 				list_Edges.pop();
 			}
-			else{
-			//temp_vertices = pointsArray;
-			cout << "tam verti antes" << convex_edges.size() << endl;
-			cout << "tam tempverti" << temp_vertices.size() << endl;
-			isVT(list_Edges.front(), temp_vertices, triangles);
-			cout << "tam tempverti" << temp_vertices.size() << endl;
-			//Finds the greater angle and its vertice
-			angle_vertice = greater_angle_vertice(temp_vertices, list_Edges);
-			Edges newestFirst(list_Edges.front().getEnd(), angle_vertice.second);
-			newestFirst.setFree(1);
-			Edges newestSecond(angle_vertice.second, list_Edges.front().getStart());
-			newestSecond.setFree(1);
-
-			cout << angle_vertice.second.getAxis_x() << endl;
-
-			if (!isEdgeBelongingConvex(newestFirst, convex_edges)) {
-				//newestFirst.setFree(1);
-				convex_edges.push_back(newestFirst);
-				list_Edges.push(newestFirst);
-			}
-			cout << "newestFirst " << newestFirst.getFree() << endl;
-
-			if (!isEdgeBelongingConvex(newestSecond, convex_edges)) {
-				//newestSecond.setFree(1);
-				convex_edges.push_back(newestSecond);
-				list_Edges.push(newestSecond);
-			}
-			cout << "newestSecond " << newestSecond.getFree() << endl;
-
-			cout << "tam verti depois" << convex_edges.size() << endl;
-			if(list_Edges.front().getFree() == 1)
-				triangles.push_back(Triangle(list_Edges.front().getEnd(), angle_vertice.second, list_Edges.front().getStart()));
-			cout << "triangulos " << triangles.size() << endl;
-			list_Edges.pop();
-
-
-			/*
-			if (!list_Edges.empty()) {
-				for (int i = 0; i < convex_edges.size(); i++) {
-					if (((list_Edges.front().getStart().getAxis_x() == convex_edges[i].getStart().getAxis_x() && list_Edges.front().getStart().getAxis_y() == convex_edges[i].getStart().getAxis_y()) ||
-						(list_Edges.front().getStart().getAxis_x() == convex_edges[i].getEnd().getAxis_x() && list_Edges.front().getStart().getAxis_y() == convex_edges[i].getEnd().getAxis_y())) &&
-						((list_Edges.front().getEnd().getAxis_x() == convex_edges[i].getStart().getAxis_x() && list_Edges.front().getEnd().getAxis_y() == convex_edges[i].getStart().getAxis_y()) ||
-						(list_Edges.front().getEnd().getAxis_x() == convex_edges[i].getEnd().getAxis_x() && list_Edges.front().getEnd().getAxis_y() == convex_edges[i].getEnd().getAxis_y())))
-					{
-						list_Edges.front().setFree(0);
-					}
+			else {
+				isVT(list_Edges.front(), temp_vertices, triangles);
+				angle_vertice = greater_angle_vertice(temp_vertices, list_Edges);
+				Edges newestFirst(list_Edges.front().getEnd(), angle_vertice.second);
+				newestFirst.setFree(1);
+				if (IsEdgeTriangle(newestFirst, triangles) || interceptEdge(convex_edges, newestFirst) || isEdgeBelongingConvex(newestFirst, convex_edges)) {
+					cout << "num posso1" << endl;
 				}
-			}
-			*/
+				else {
+					convex_edges.push_back(newestFirst);
+					list_Edges.push(newestFirst);
+
+				}
+				int counter = 0;
+				Edges newestSecond(angle_vertice.second, list_Edges.front().getStart());
+				newestSecond.setFree(1);
+				if (IsEdgeTriangle(newestSecond, triangles) || interceptEdge(convex_edges, newestSecond) || isEdgeBelongingConvex(newestSecond, convex_edges)) {
+					cout << "num posso2" << endl;
+					counter++;
+				}
+				else {
+					convex_edges.push_back(newestSecond);
+					list_Edges.push(newestSecond);
+					counter++;
+				}
 
 
-			
-
-			
-
-			/*
-			while (list_Edges.front().getFree() == 0) {
+				if (!interceptEdge(convex_edges, newestFirst) && !interceptEdge(convex_edges, newestSecond)) {
+					triangles.push_back(Triangle(list_Edges.front().getEnd(), angle_vertice.second, list_Edges.front().getStart()));
+				}
+				/*
+				if (list_Edges.front().getFree() == 1 && counter < 2)
+					triangles.push_back(Triangle(list_Edges.front().getEnd(), angle_vertice.second, list_Edges.front().getStart()));
+					*/
+				cout << "triangulos " << triangles.size() << endl;
 				list_Edges.pop();
-			}*/
-			//cout << list_Edges.front().getFree() << endl;
-			temp_vertices = pointsArray;
+				temp_vertices = pointsArray;
 			}
+
 		}
 
 
-		
 		cout << triangles.size() << endl;
 		for (int i = 0; i < (int)triangles.size(); i++) {
 			glBegin(GL_LINE_STRIP);
+			//glColor3f(((double)rand() / (RAND_MAX)), ((double)rand() / (RAND_MAX)), ((double)rand() / (RAND_MAX)));
 			glVertex2f(triangles[i].getV1().getAxis_x(), triangles[i].getV1().getAxis_y());
 			glVertex2f(triangles[i].getV2().getAxis_x(), triangles[i].getV2().getAxis_y());
 			glVertex2f(triangles[i].getV3().getAxis_x(), triangles[i].getV3().getAxis_y());
-			
-			//getchar();
+			glVertex2f(triangles[i].getV1().getAxis_x(), triangles[i].getV1().getAxis_y());
+			getchar();
 			glEnd();
 			glFlush();
 			glutSwapBuffers();
@@ -458,13 +429,14 @@ void mouse(int button, int state, int x, int y) {
 
 		glBegin(GL_LINE_STRIP);
 		for (int i = 0; i < (int)oldpoints.size(); i++) {
-		glVertex2f(oldpoints[i].getAxis_x(), oldpoints[i].getAxis_y());
+			glVertex2f(oldpoints[i].getAxis_x(), oldpoints[i].getAxis_y());
 		}
 		glEnd();
 		glFlush();
 		glutSwapBuffers();
 		glutSwapBuffers();
 		
+
 	}
 }
 
